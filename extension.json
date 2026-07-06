@@ -1,6 +1,6 @@
 {
 	"name": "diff-pair-assistant",
-	"uuid": "3f48035397a64fb8a96d88da3c3ae48c",
+	"uuid": "kf48035397a64fb6a26d87da3c1ab42c",
 	"displayName": "差分对雷达",
 	"description": "极速识别 PCB 差分对并一键写入",
 	"version": "26.7.1",
