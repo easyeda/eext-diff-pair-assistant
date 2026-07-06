@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="zh-Hans">
+	<head>
+		<title>差分对管理</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<style>
+			:root {
+				color-scheme: light;
+				--bg: #f6f7fb;
+				--card: #ffffff;
+				--text: #0f172a;
+				--muted: #64748b;
+				--primary: #2563eb;
+				--primary-contrast: #ffffff;
+				--border: #e2e8f0;
+				--shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+				--success: #16a34a;
+				--warning: #f59e0b;
+				--danger: #ef4444;
+				--chip: #f1f5f9;
+				--soft: #f8fafc;
+				--table-head: #f1f5f9;
+				--table-hover: #f8fafc;
+				--tag: #e2e8f0;
+				--button: #eef2ff;
+				--button-text: #334155;
+				--selected-bg: #e0e7ff;
+			}
+			[data-theme='dark'] {
+				color-scheme: dark;
+				--bg: #0b1220;
+				--card: #0f172a;
+				--text: #e2e8f0;
+				--muted: #94a3b8;
+				--primary: #60a5fa;
+				--primary-contrast: #0b1220;
+				--border: #1f2a44;
+				--shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+				--chip: #1e293b;
+				--soft: #111827;
+				--table-head: #111827;
+				--table-hover: #0f1b33;
+				--tag: #1f2a44;
+				--button: #1f2a44;
+				--button-text: #e2e8f0;
+				--selected-bg: #1e3a5f;
+			}
+			* { box-sizing: border-box; }
+			body {
+				margin: 0;
+				height: 100vh;
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+				background: var(--bg);
+				color: var(--text);
+				overflow: hidden;
+			}
+			.app {
+				display: flex;
+				flex-direction: column;
+				height: 100vh;
+				padding: 10px 16px 14px;
+				gap: 8px;
+			}
+			.titlebar {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 8px 14px;
+				background: var(--card);
+				border-radius: 10px;
+				box-shadow: var(--shadow);
+			}
+			.titlebar-left { display: flex; align-items: center; gap: 12px; }
+			.titlebar-right { display: flex; align-items: center; gap: 12px; color: var(--muted); font-weight: 600; font-size: 13px; }
+			.version-badge { padding: 4px 10px; border-radius: 999px; background: var(--tag); color: var(--text); text-decoration: none; }
+			.version-link { cursor: pointer; }
+			.theme-toggle {
+				display: inline-flex;
+				align-items: center;
+				justify-content: flex-start;
+				height: 24px;
+				padding: 0 24px;
+				border-radius: 999px;
+				font-size: 12px;
+				line-height: 24px;
+				background: var(--button);
+				color: var(--button-text);
+				position: relative;
+				overflow: hidden;
+			}
+			.theme-toggle::after {
+				content: '';
+				position: absolute;
+				top: 2px;
+				right: 2px;
+				width: 20px;
+				height: 20px;
+				border-radius: 999px;
+				background: var(--text);
+			}
+			.theme-toggle[data-theme='dark']::after { left: 2px; right: auto; }
+			.theme-toggle[data-theme='dark'] { justify-content: flex-end; }
+			.window-controls { display: flex; gap: 8px; align-items: center; }
+			.window-dot { width: 12px; height: 12px; border-radius: 999px; border: 1px solid rgba(15, 23, 42, 0.08); cursor: pointer; }
+			.window-dot.close { background: #ff5f56; }
+			.window-dot.minimize { background: #ffbd2e; }
+			.window-dot.maximize { background: #27c93f; }
+			.title { font-size: 14px; font-weight: 600; }
+			button {
+				border: none;
+				border-radius: 8px;
+				padding: 6px 12px;
+				font-size: 12px;
+				font-weight: 600;
+				cursor: pointer;
+				background: var(--button);
+				color: var(--button-text);
+				transition: all 0.2s ease;
+			}
+			button:hover { transform: translateY(-1px); }
+			button.primary { background: var(--primary); color: var(--primary-contrast); box-shadow: 0 6px 12px rgba(37, 99, 235, 0.22); }
+			button.danger { background: var(--danger); color: #fff; box-shadow: 0 6px 12px rgba(239, 68, 68, 0.22); }
+			button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+			.section { background: var(--card); border-radius: 10px; padding: 8px 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px; }
+			.filter-bar { display: flex; gap: 8px; align-items: center; }
+			.filter-input { flex: 1; height: 30px; border-radius: 8px; border: 1px solid var(--border); padding: 0 10px; font-size: 12px; font-weight: 600; background: var(--card); color: var(--text); }
+			.filter-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12); }
+			.filter-select { height: 30px; border-radius: 8px; border: 1px solid var(--border); padding: 0 10px; font-size: 12px; font-weight: 600; background: var(--card); color: var(--text); min-width: 130px; }
+			.results { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; }
+			.result-list { flex: 1; min-height: 0; overflow: auto; padding-right: 4px; }
+			.table { width: 100%; border-collapse: collapse; font-size: 12px; }
+			.table thead th { text-align: left; padding: 6px 6px; background: var(--table-head); color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 2; }
+			.table tbody td { padding: 5px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+			.table tbody tr:hover { background: var(--table-hover); }
+			.table tbody tr.selected { background: var(--selected-bg); }
+			.cell-name { font-weight: 600; }
+			.cell-muted { color: var(--muted); }
+			.rule-select { height: 28px; border-radius: 6px; border: 1px solid var(--border); padding: 0 6px; font-size: 12px; font-weight: 600; background: var(--card); color: var(--text); width: 100%; min-width: 100px; }
+			.name-input { border: 1px solid transparent; background: transparent; font-size: 12px; font-weight: 600; color: var(--text); width: 100%; padding: 2px 4px; border-radius: 4px; font-family: inherit; }
+			.name-input:hover { border-color: var(--border); background: var(--card); }
+			.name-input:focus { outline: none; border-color: var(--primary); background: var(--card); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12); }
+			.delete-btn { width: 22px; height: 22px; border-radius: 6px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: transparent; color: var(--muted); font-size: 14px; opacity: 0; transition: all 0.15s ease; }
+			.table tbody tr:hover .delete-btn { opacity: 1; }
+			.delete-btn:hover { background: var(--danger); color: #fff; }
+			.footer { display: flex; align-items: center; justify-content: space-between; background: var(--card); border-radius: 10px; padding: 8px 14px; box-shadow: var(--shadow); gap: 12px; }
+			.status { color: var(--muted); font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
+			.status-error { color: var(--danger); }
+			.status-warning { color: var(--warning); }
+			.status-info { color: var(--primary); }
+			.status-success { color: var(--success); }
+			.actions { display: flex; align-items: center; gap: 8px; }
+			.batch-select { height: 30px; border-radius: 8px; border: 1px solid var(--border); padding: 0 10px; font-size: 12px; font-weight: 600; background: var(--card); color: var(--text); min-width: 150px; }
+			.loading { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.2); backdrop-filter: blur(6px); z-index: 999; }
+			.loading.active { display: flex; }
+			.loading-card { background: var(--card); padding: 18px 22px; border-radius: 10px; box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+			#loadingText { text-align: center; white-space: pre-line; }
+			.spinner { width: 36px; height: 36px; border-radius: 999px; border: 4px solid var(--border); border-top-color: var(--primary); animation: spin 0.9s linear infinite; }
+			.icon-button { width: 26px; height: 26px; border-radius: 999px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--tag); color: var(--text); font-size: 14px; }
+			.hint { font-size: 11px; color: var(--muted); font-weight: 600; }
+			@keyframes spin { to { transform: rotate(360deg); } }
+		</style>
+	</head>
+	<body>
+		<div class="app">
+			<header class="titlebar">
+				<div class="titlebar-left">
+					<div class="window-controls">
+						<div class="window-dot close" data-action="close"></div>
+						<div class="window-dot minimize" data-action="minimize"></div>
+						<div class="window-dot maximize" data-action="maximize"></div>
+					</div>
+					<div class="title">差分对管理</div>
+					<button class="theme-toggle" id="themeToggle">浅色</button>
+				</div>
+				<div class="titlebar-right">
+					<a class="version-badge version-link" id="versionLink" href="https://ext.lceda.cn/item/zero1798/diff-pair-assistant" target="_blank" rel="noopener noreferrer"></a>
+				</div>
+			</header>
+			<section class="section">
+				<div class="filter-bar">
+					<input class="filter-input" id="filterInput" placeholder="搜索差分对名..." />
+					<select class="filter-select" id="ruleFilter">
+						<option value="all">全部规则</option>
+					</select>
+					<button id="refreshBtn">刷新</button>
+				</div>
+			</section>
+			<section class="section results">
+				<div class="result-list" id="resultList">
+					<table class="table">
+						<thead>
+							<tr>
+								<th style="width: 50px"><input type="checkbox" id="selectAll" /></th>
+								<th style="width: 150px">差分对名</th>
+								<th>正网络</th>
+								<th>负网络</th>
+								<th style="width: 200px">当前规则</th>
+									<th style="width: 36px"></th>
+							</tr>
+						</thead>
+						<tbody id="tableBody"></tbody>
+					</table>
+				</div>
+				<div class="hint">提示: Shift+点击可范围选择，Ctrl+点击可多选非连续行，点击名称可修改，×按钮可标记删除单行</div>
+			</section>
+			<footer class="footer">
+				<div class="status status-info" id="statusText">等待加载</div>
+				<div class="actions">
+					<span id="selectedCount" class="status">已选 0 对</span>
+					<select class="batch-select" id="batchRuleSelect" disabled>
+						<option value="">选择规则</option>
+					</select>
+					<button class="primary" id="applyBtn" disabled>应用修改</button>
+					<button class="danger" id="deleteSelectedBtn" disabled>删除选中</button>
+					<button id="clearSelectionBtn">取消选择</button>
+				</div>
+			</footer>
+		</div>
+		<div class="loading" id="loading">
+			<div class="loading-card">
+				<div class="spinner"></div>
+				<div id="loadingText">正在加载差分对</div>
+			</div>
+		</div>
+		<script>
+			const APP_VERSION = '26.4.7';
+			const THEME_KEY = 'diffPairRuleManagerTheme';
+			const DIFF_PAIR_RULE_TYPE = 'Differential Pair';
+			const state = {
+				pairs: [],
+				rules: [],
+				defaultRuleName: null,
+				pairBindings: new Map(),
+				pendingChanges: new Map(),
+				pendingNameChanges: new Map(),
+				pendingDeletions: new Set(),
+				selectedPairIds: new Set(),
+				lastSelectedIndex: null,
+				filterText: '',
+				filterRule: 'all',
+			};
+			const elements = {
+				filterInput: document.getElementById('filterInput'),
+				ruleFilter: document.getElementById('ruleFilter'),
+				refreshBtn: document.getElementById('refreshBtn'),
+				tableBody: document.getElementById('tableBody'),
+				selectAll: document.getElementById('selectAll'),
+				statusText: document.getElementById('statusText'),
+				selectedCount: document.getElementById('selectedCount'),
+				batchRuleSelect: document.getElementById('batchRuleSelect'),
+				applyBtn: document.getElementById('applyBtn'),
+				deleteSelectedBtn: document.getElementById('deleteSelectedBtn'),
+				clearSelectionBtn: document.getElementById('clearSelectionBtn'),
+				loading: document.getElementById('loading'),
+				loadingText: document.getElementById('loadingText'),
+				themeToggle: document.getElementById('themeToggle'),
+				versionLink: document.getElementById('versionLink'),
+			};
+			const isIFrameContext = Boolean(window.parent && window.parent !== window && window.parent.eda);
+			const windowControls = document.querySelector('.window-controls');
+			if (!isIFrameContext && windowControls) windowControls.style.display = 'none';
+			function getEda() {
+				if (window.eda) return window.eda;
+				if (window.parent && window.parent.eda) return window.parent.eda;
+				if (window.opener && window.opener.eda) return window.opener.eda;
+				return null;
+			}
+			function setLoading(active, text) {
+				elements.loading.classList.toggle('active', active);
+				if (text) elements.loadingText.textContent = text;
+			}
+			function setStatus(text, severity = 'info') {
+				const icons = { error: 'X', warning: '!', info: '?', success: 'OK' };
+				const safeSeverity = icons[severity] ? severity : 'info';
+				elements.statusText.textContent = `${icons[safeSeverity]} ${text}`;
+				elements.statusText.className = `status status-${safeSeverity}`;
+			}
+			function setTheme(theme) {
+				const safeTheme = theme === 'dark' ? 'dark' : 'light';
+				document.documentElement.setAttribute('data-theme', safeTheme);
+				localStorage.setItem(THEME_KEY, safeTheme);
+				if (elements.themeToggle) {
+					elements.themeToggle.textContent = safeTheme === 'dark' ? '深色' : '浅色';
+					elements.themeToggle.setAttribute('data-theme', safeTheme);
+				}
+			}
+			function toggleTheme() {
+				setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+			}
+			function initTheme() { setTheme(localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'); }
+			function normalizePairsData(pairsData) {
+				if (!pairsData) return [];
+				if (Array.isArray(pairsData)) return pairsData;
+				if (typeof pairsData === 'object') {
+					const pairs = [];
+					Object.keys(pairsData).forEach((key) => {
+						const item = pairsData[key];
+						if (item && typeof item === 'object') {
+							pairs.push({
+								name: item.name || key,
+								positiveNet: item.positiveNet || item.positive || '',
+								negativeNet: item.negativeNet || item.negative || '',
+							});
+						}
+					});
+					return pairs;
+				}
+				return [];
+			}
+			function parseRuleConfig(ruleConfig) {
+				const rules = [];
+				let defaultRuleName = null;
+				if (!ruleConfig) return { rules, defaultRuleName };
+				const config = ruleConfig.config || ruleConfig;
+				const physics = config.Physics || {};
+				const diffPairRules = physics['Differential Pair'] || physics[DIFF_PAIR_RULE_TYPE] || {};
+				if (typeof diffPairRules === 'object' && diffPairRules !== null) {
+					Object.keys(diffPairRules).forEach((ruleName) => {
+						const ruleObj = diffPairRules[ruleName];
+						if (ruleObj && typeof ruleObj === 'object') {
+							const isDefault = ruleObj.ruleState === 1 || ruleObj.isSetDefault === true;
+							if (isDefault) defaultRuleName = ruleName;
+							rules.push({ name: ruleName, context: ruleObj.ruleContext || ruleObj.form || {}, isDefault });
+						}
+					});
+				}
+				return { rules, defaultRuleName };
+			}
+			function parsePairBindingsFromSource(sourceText) {
+				const bindings = new Map();
+				if (!sourceText || typeof sourceText !== 'string') return bindings;
+				const lines = sourceText.split('\n');
+				for (const line of lines) {
+					if (!line.includes('RULE_SELECTOR') || !line.includes('DIFF_PAIR')) continue;
+					try {
+						const sepIdx = line.indexOf('||');
+						if (sepIdx < 0) continue;
+						const outer = JSON.parse(line.slice(0, sepIdx));
+						const innerRaw = line.slice(sepIdx + 2).replace(/\|$/, '');
+						const inner = JSON.parse(innerRaw);
+						const idObj = JSON.parse(outer.id);
+						// id format: ["RULE_SELECTOR", ["DIFF_PAIR", "pairName"]]
+						if (idObj && idObj[1] && idObj[1][0] === 'DIFF_PAIR') {
+							const pairName = idObj[1][1];
+							const ruleName = inner.ruleKeyValue?.DIFFER_ENTAIL || null;
+							// null means using default rule
+							bindings.set(pairName, ruleName);
+						}
+					} catch { /* skip malformed lines */ }
+				}
+				return bindings;
+			}
+			function formatRuleName(ruleName, isDefault) {
+				return isDefault ? `${ruleName} [默认]` : ruleName;
+			}
+			async function loadData() {
+				const eda = getEda();
+				if (!eda) { setStatus('未检测到 EDA 环境', 'error'); return; }
+				setLoading(true, '正在加载差分对');
+				try {
+					const pairsData = await eda.pcb_Drc.getAllDifferentialPairs();
+					state.pairs = normalizePairsData(pairsData);
+					const ruleConfig = await eda.pcb_Drc.getCurrentRuleConfiguration();
+					const parsed = parseRuleConfig(ruleConfig);
+					state.rules = parsed.rules;
+					state.defaultRuleName = parsed.defaultRuleName;
+					// 从 PCB 源文件 NDJSON 中解析 RULE_SELECTOR 绑定关系
+					const sourceText = await eda.sys_FileManager.getDocumentSource();
+					state.pairBindings = parsePairBindingsFromSource(sourceText);
+					// 确保所有差分对都有绑定值（null 表示使用默认规则）
+					state.pairs.forEach((pair) => {
+						if (!state.pairBindings.has(pair.name)) {
+							state.pairBindings.set(pair.name, null);
+						}
+					});
+					state.pendingChanges.clear();
+					state.pendingNameChanges.clear();
+					state.pendingDeletions.clear();
+					renderRuleFilter();
+					renderBatchRuleSelect();
+					renderTable();
+					updateSelectAllState();
+					updateBatchActions();
+					setStatus(`加载完成，共 ${state.pairs.length} 对，${state.rules.length} 个规则`, 'success');
+				} catch (error) {
+					console.error('loadData error:', error);
+					setStatus('加载失败: ' + (error.message || error), 'error');
+				} finally { setLoading(false); }
+			}
+			function renderRuleFilter() {
+				elements.ruleFilter.innerHTML = '<option value="all">全部规则</option>';
+				state.rules.forEach((rule) => {
+					const opt = document.createElement('option');
+					opt.value = rule.name;
+					opt.textContent = formatRuleName(rule.name, rule.isDefault);
+					elements.ruleFilter.appendChild(opt);
+				});
+			}
+			function renderBatchRuleSelect() {
+				elements.batchRuleSelect.innerHTML = '<option value="">选择规则</option>';
+				state.rules.forEach((rule) => {
+					const opt = document.createElement('option');
+					opt.value = rule.name;
+					opt.textContent = formatRuleName(rule.name, rule.isDefault);
+					elements.batchRuleSelect.appendChild(opt);
+				});
+			}
+			function getFilteredPairs() {
+				return state.pairs.filter((pair) => {
+					if (state.filterText && !pair.name.toLowerCase().includes(state.filterText.toLowerCase())) return false;
+					const currentRule = state.pairBindings.get(pair.name) || state.defaultRuleName;
+					if (state.filterRule !== 'all') return currentRule === state.filterRule;
+					return true;
+				});
+			}
+			function renderTable() {
+				const filtered = getFilteredPairs();
+				elements.tableBody.innerHTML = '';
+				filtered.forEach((pair, index) => {
+					const row = document.createElement('tr');
+					row.dataset.pairName = pair.name;
+					row.dataset.index = index;
+					if (state.selectedPairIds.has(pair.name)) row.classList.add('selected');
+					const checkbox = document.createElement('input');
+					checkbox.type = 'checkbox';
+					checkbox.checked = state.selectedPairIds.has(pair.name);
+					checkbox.dataset.pairName = pair.name;
+					checkbox.dataset.index = index;
+					const checkboxCell = document.createElement('td');
+					checkboxCell.appendChild(checkbox);
+					const nameCell = document.createElement('td');
+					nameCell.className = 'cell-name';
+					const nameInput = document.createElement('input');
+					nameInput.type = 'text';
+					nameInput.className = 'name-input';
+					nameInput.value = state.pendingNameChanges.get(pair.name) || pair.name;
+					nameInput.dataset.pairName = pair.name;
+					nameInput.title = '点击修改差分对名';
+					nameCell.appendChild(nameInput);
+					const positiveCell = document.createElement('td');
+					positiveCell.textContent = pair.positiveNet;
+					const negativeCell = document.createElement('td');
+					negativeCell.textContent = pair.negativeNet;
+					const ruleCell = document.createElement('td');
+					const ruleSelect = document.createElement('select');
+					ruleSelect.className = 'rule-select';
+					ruleSelect.dataset.pairName = pair.name;
+					state.rules.forEach((rule) => {
+						const opt = document.createElement('option');
+						opt.value = rule.name;
+						opt.textContent = formatRuleName(rule.name, rule.isDefault);
+						ruleSelect.appendChild(opt);
+					});
+					const currentBinding = state.pairBindings.get(pair.name) || state.defaultRuleName;
+					const pendingRule = state.pendingChanges.get(pair.name);
+					const selectedRule = pendingRule !== undefined ? pendingRule : currentBinding;
+					if (state.rules.some(r => r.name === selectedRule)) {
+						ruleSelect.value = selectedRule;
+					} else if (state.rules.length > 0) {
+						ruleSelect.value = state.defaultRuleName || state.rules[0].name;
+					}
+					if (pendingRule !== undefined && pendingRule !== currentBinding) {
+						row.style.borderLeft = '3px solid var(--warning)';
+						ruleSelect.style.fontWeight = '800';
+					}
+					const pendingName = state.pendingNameChanges.get(pair.name);
+					if (pendingName !== undefined && pendingName !== pair.name) {
+						row.style.borderLeft = '3px solid var(--warning)';
+						nameInput.style.fontWeight = '800';
+					}
+					const deleteCell = document.createElement('td');
+					const deleteBtn = document.createElement('button');
+					deleteBtn.className = 'delete-btn';
+					deleteBtn.textContent = '×';
+					deleteBtn.dataset.pairName = pair.name;
+					deleteBtn.title = '删除此差分对';
+					deleteCell.appendChild(deleteBtn);
+					if (state.pendingDeletions.has(pair.name)) {
+						nameInput.style.textDecoration = 'line-through';
+						nameInput.style.opacity = '0.5';
+					}
+					ruleCell.appendChild(ruleSelect);
+					row.appendChild(checkboxCell);
+					row.appendChild(nameCell);
+					row.appendChild(positiveCell);
+					row.appendChild(negativeCell);
+					row.appendChild(ruleCell);
+					row.appendChild(deleteCell);
+					elements.tableBody.appendChild(row);
+				});
+			}
+			function updateSelectAllState() {
+				const filtered = getFilteredPairs();
+				const selected = filtered.filter((p) => state.selectedPairIds.has(p.name)).length;
+				elements.selectAll.checked = selected === filtered.length && filtered.length > 0;
+				elements.selectAll.indeterminate = selected > 0 && selected < filtered.length;
+			}
+			function updateBatchActions() {
+				const count = state.selectedPairIds.size;
+				const hasPending = state.pendingChanges.size > 0 || state.pendingNameChanges.size > 0 || state.pendingDeletions.size > 0;
+				elements.selectedCount.textContent = `已选 ${count} 对${hasPending ? `，${state.pendingChanges.size} 条待改规则，${state.pendingNameChanges.size} 条待改名，${state.pendingDeletions.size} 条待删除` : ''}`;
+				elements.batchRuleSelect.disabled = count === 0;
+				elements.applyBtn.disabled = state.pendingChanges.size === 0 && state.pendingNameChanges.size === 0 && state.pendingDeletions.size === 0;
+				elements.deleteSelectedBtn.disabled = count === 0;
+			}
+			function toggleSelection(pairName, index, shiftKey, ctrlKey) {
+				const filtered = getFilteredPairs();
+				if (shiftKey && state.lastSelectedIndex !== null) {
+					const start = Math.min(state.lastSelectedIndex, index);
+					const end = Math.max(state.lastSelectedIndex, index);
+					for (let i = start; i <= end; i++) if (filtered[i]) state.selectedPairIds.add(filtered[i].name);
+				} else if (ctrlKey) {
+					state.selectedPairIds.has(pairName) ? state.selectedPairIds.delete(pairName) : state.selectedPairIds.add(pairName);
+					state.lastSelectedIndex = index;
+				} else {
+					state.selectedPairIds.clear();
+					state.selectedPairIds.add(pairName);
+					state.lastSelectedIndex = index;
+				}
+				renderTable();
+				updateSelectAllState();
+				updateBatchActions();
+			}
+			function bindEvents() {
+				elements.selectAll.addEventListener('change', (e) => {
+					const filtered = getFilteredPairs();
+					e.target.checked ? filtered.forEach((p) => state.selectedPairIds.add(p.name)) : state.selectedPairIds.clear();
+					renderTable();
+					updateBatchActions();
+				});
+				elements.tableBody.addEventListener('click', (e) => {
+					if (e.target.closest('select') || e.target.closest('option') || e.target.closest('.name-input')) return;
+					const deleteBtn = e.target.closest('.delete-btn');
+					if (deleteBtn) {
+						const pairName = deleteBtn.dataset.pairName;
+						if (state.pendingDeletions.has(pairName)) {
+							state.pendingDeletions.delete(pairName);
+						} else {
+							state.pendingDeletions.add(pairName);
+							state.pendingChanges.delete(pairName);
+						}
+						renderTable();
+						updateBatchActions();
+						return;
+					}
+					const checkbox = e.target.closest('input[type="checkbox"]');
+					if (checkbox) {
+						toggleSelection(checkbox.dataset.pairName, parseInt(checkbox.dataset.index, 10), e.shiftKey, e.ctrlKey || e.metaKey);
+						return;
+					}
+					const row = e.target.closest('tr');
+					if (row) toggleSelection(row.dataset.pairName, parseInt(row.dataset.index, 10), e.shiftKey, e.ctrlKey || e.metaKey);
+				});
+				elements.tableBody.addEventListener('change', (e) => {
+					if (e.target.classList.contains('rule-select')) {
+						const pairName = e.target.dataset.pairName;
+						const ruleName = e.target.value;
+						const currentBinding = state.pairBindings.get(pairName) || state.defaultRuleName;
+						if (ruleName === currentBinding) {
+							state.pendingChanges.delete(pairName);
+						} else {
+							state.pendingChanges.set(pairName, ruleName);
+						}
+						renderTable();
+						updateBatchActions();
+					}
+				});
+				elements.tableBody.addEventListener('input', (e) => {
+					if (e.target.classList.contains('name-input')) {
+						const pairName = e.target.dataset.pairName;
+						const newName = e.target.value.trim();
+						const originalPair = state.pairs.find(p => p.name === pairName);
+						const originalName = originalPair ? originalPair.name : pairName;
+						if (newName && newName !== originalName) {
+							state.pendingNameChanges.set(pairName, newName);
+						} else {
+							state.pendingNameChanges.delete(pairName);
+						}
+						updateBatchActions();
+					}
+				});
+				elements.filterInput.addEventListener('input', (e) => {
+					state.filterText = e.target.value;
+					state.selectedPairIds.clear();
+					state.lastSelectedIndex = null;
+					renderTable();
+					updateSelectAllState();
+					updateBatchActions();
+				});
+				elements.ruleFilter.addEventListener('change', (e) => {
+					state.filterRule = e.target.value;
+					state.selectedPairIds.clear();
+					state.lastSelectedIndex = null;
+					renderTable();
+					updateSelectAllState();
+					updateBatchActions();
+				});
+				elements.refreshBtn.addEventListener('click', () => loadData());
+				elements.batchRuleSelect.addEventListener('change', (e) => {
+					if (!e.target.value) return;
+					state.selectedPairIds.forEach((pairName) => state.pendingChanges.set(pairName, e.target.value));
+					renderTable();
+					updateBatchActions();
+				});
+				elements.applyBtn.addEventListener('click', async () => applyRules());
+					elements.deleteSelectedBtn.addEventListener('click', () => deleteSelectedPairs());
+				elements.clearSelectionBtn.addEventListener('click', () => {
+					state.selectedPairIds.clear();
+					state.lastSelectedIndex = null;
+					renderTable();
+					updateSelectAllState();
+					updateBatchActions();
+				});
+				if (elements.themeToggle) elements.themeToggle.addEventListener('click', toggleTheme);
+				document.querySelectorAll('.window-dot').forEach((btn) => {
+					btn.addEventListener('click', () => {
+						const action = btn.dataset.action;
+						const eda = getEda();
+						if (action === 'close') {
+							if (isIFrameContext && eda?.sys_IFrame?.closeIFrame) eda.sys_IFrame.closeIFrame('diff-pair-rule-manager');
+							else window.close();
+						} else if (action === 'minimize' && isIFrameContext && eda?.sys_IFrame?.hideIFrame) {
+							eda.sys_IFrame.hideIFrame('diff-pair-rule-manager');
+						} else if (action === 'maximize' && isIFrameContext && eda?.sys_IFrame?.showIFrame) {
+							eda.sys_IFrame.showIFrame('diff-pair-rule-manager');
+						}
+					});
+				});
+			}
+			function deleteSelectedPairs() {
+				if (state.selectedPairIds.size === 0) return;
+				let addCount = 0;
+				state.selectedPairIds.forEach((pairName) => {
+					if (!state.pendingDeletions.has(pairName)) {
+						state.pendingDeletions.add(pairName);
+						state.pendingChanges.delete(pairName);
+						addCount++;
+					}
+				});
+				if (addCount > 0) {
+					state.selectedPairIds.clear();
+					state.lastSelectedIndex = null;
+					renderTable();
+					updateBatchActions();
+					setStatus(`${addCount} 对标记待删除`, 'warning');
+				}
+			}
+			async function applyRules() {
+				const eda = getEda();
+				if (!eda) { setStatus('未检测到 EDA 环境', 'error'); return; }
+				if (state.pendingChanges.size === 0 && state.pendingNameChanges.size === 0 && state.pendingDeletions.size === 0) { setStatus('没有待应用的修改', 'warning'); return; }
+				setLoading(true, '正在应用规则');
+				try {
+					let appliedCount = 0;
+					let renamedCount = 0;
+					let deletedCount = 0;
+
+					// 1. 先改名（API 可能触发内部状态变更）
+					if (state.pendingNameChanges.size > 0) {
+						for (const [oldName, newName] of state.pendingNameChanges) {
+							const ok = await eda.pcb_Drc.modifyDifferentialPairName(oldName, newName);
+							if (ok) renamedCount++;
+						}
+					}
+
+					// 2. 再改规则（NDJSON 写回，使用最新状态）
+					if (state.pendingChanges.size > 0) {
+						let sourceText = await eda.sys_FileManager.getDocumentSource();
+						const lines = sourceText.split('\n');
+						for (const [pairName, targetRuleName] of state.pendingChanges) {
+							for (let i = 0; i < lines.length; i++) {
+								if (!lines[i].includes('RULE_SELECTOR') || !lines[i].includes('DIFF_PAIR')) continue;
+								const sepIdx = lines[i].indexOf('||');
+								if (sepIdx < 0) continue;
+								try {
+									const outer = JSON.parse(lines[i].slice(0, sepIdx));
+									const idObj = JSON.parse(outer.id);
+									if (idObj && idObj[1] && idObj[1][0] === 'DIFF_PAIR' && idObj[1][1] === pairName) {
+										const innerRaw = lines[i].slice(sepIdx + 2).replace(/\|$/, '');
+										const inner = JSON.parse(innerRaw);
+										if (targetRuleName) {
+											inner.ruleKeyValue = { ...inner.ruleKeyValue, DIFFER_ENTAIL: targetRuleName };
+										} else {
+											inner.ruleKeyValue = {};
+										}
+										lines[i] = lines[i].slice(0, sepIdx) + '||' + JSON.stringify(inner) + '|';
+										appliedCount++;
+										break;
+									}
+								} catch { /* skip */ }
+							}
+						}
+						await eda.sys_FileManager.setDocumentSource(lines.join('\n'));
+					}
+
+					// 3. 最后删除（API）
+					if (state.pendingDeletions.size > 0) {
+						for (const pairName of state.pendingDeletions) {
+							const ok = await eda.pcb_Drc.deleteDifferentialPair(pairName);
+							if (ok) deletedCount++;
+						}
+					}
+
+					// 保存
+					await eda.pcb_Document.save();
+
+					const totalChanged = appliedCount + renamedCount + deletedCount;
+					if (totalChanged > 0) {
+						let msg = `成功应用 ${appliedCount} 对规则`;
+						if (renamedCount > 0) msg += `，重命名 ${renamedCount} 对`;
+						if (deletedCount > 0) msg += `，删除 ${deletedCount} 对`;
+						setStatus(msg, 'success');
+						state.pendingChanges.clear();
+						state.pendingNameChanges.clear();
+						state.pendingDeletions.clear();
+						state.selectedPairIds.clear();
+						state.lastSelectedIndex = null;
+						await loadData();
+					} else {
+						setStatus('应用规则失败：未找到对应的 RULE_SELECTOR', 'error');
+					}
+				} catch (error) {
+					console.error('applyRules error:', error);
+					setStatus('应用规则失败: ' + (error.message || error), 'error');
+				} finally { setLoading(false); }
+			}
+			if (elements.versionLink) elements.versionLink.textContent = `v${APP_VERSION}`;
+			initTheme();
+			bindEvents();
+			loadData();
+		</script>
+	</body>
+</html>
